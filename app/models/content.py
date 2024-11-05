@@ -11,7 +11,21 @@ class ContentTypeModel(Base):
     content_name = Column(String(50), unique=True, index=True)
     icon = Column(String(50))
 
-    # permissions = relationship("ContentPermission", back_populates="content_type")
+    permissions = relationship("ContentPermissionModel", back_populates="content_type")
 
     def __repr__(self):
         return f"<ContentType(id={self.id}, content_name='{self.content_name}, icon={self.icon}')>"
+
+class ContentPermissionModel(Base):
+    __tablename__ = 'content_permission'
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False)
+    content_type_id = Column(Integer, ForeignKey('content_type.id'))
+    action = Column(String(10), nullable=False)
+    
+    content_type = relationship("ContentTypeModel", back_populates="permissions")
+    # user_permissions = relationship("UserPermission", back_populates="permission")
+    
+    def __repr__(self):
+        return f"<ContentPermission(id={self.id}, name='{self.name}', content_type_id={self.content_type_id}, action={self.action})>"
