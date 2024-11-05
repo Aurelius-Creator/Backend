@@ -9,11 +9,11 @@ class ContentTypeSchema(BaseModel):
     class Config:
         from_attributes = True
         
-class ContentTypeCreate(BaseModel):
+class ContentTypeCreateSchema(BaseModel):
     content_name: str
     icon: Optional[str] = None
     
-class ContentTypeUpdate(BaseModel):
+class ContentTypeUpdateSchema(BaseModel):
     content_name: Optional[str] = None
     icon: Optional[str] = None
         
@@ -26,7 +26,7 @@ class ContentPermissionSchema(BaseModel):
     class Config:
         from_attributes = True
         
-class ContentPermissionCreate(BaseModel):
+class ContentPermissionCreateSchema(BaseModel):
     name: str
     content_type_id: int
     action: str

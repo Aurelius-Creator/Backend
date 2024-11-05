@@ -1,69 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from sqlalchemy.exc import NoResultFound
 from app.db.main import get_db
-from app.models import content
-from app.models.content import ContentType
-from pydantic import BaseModel
-from typing import Optional
-
-from app.schemas.content import ContentTypeSchema
+from app.schemas.content import ContentTypeSchema, ContentTypeCreateSchema, ContentTypeUpdateSchema
+from app.services import content
 
 router = APIRouter()
 
-@router.get("/contents")
+@router.get("/contents", response_model=list[ContentTypeSchema])
 async def get_contents(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(content.ContentType))
-    items = result.scalars().all()
-    return items
+    return await content.get_contents(db)
 
-@router.get("/content/{id}")
+@router.get("/content/{id}", response_model=ContentTypeSchema)
 async def get_content_by_id(id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(content.ContentType).where(content.ContentType.id==id))
-    item = result.scalars().first()
-    
-    if item is None:
+    try:
+        return await content.get_content_by_id(db, id)
+    except NoResultFound:
         raise HTTPException(status_code=404, detail="Content not found")
     
-    return item
+@router.post("/content", response_model=ContentTypeSchema)
+async def create_content(content_data: ContentTypeCreateSchema, db: AsyncSession = Depends(get_db)):
+    return await content.create_content(db, content_data)
 
-class ContentTypeBase(BaseModel):
-    id: int
-    content_name: str
-    icon: Optional[str] = None
-    class Config:
-        from_attributes = True
-
-class ContentCreate(BaseModel):
-    content_name: str
-    icon: Optional[str] = None
-    
-@router.post("/content")
-async def create_content(content_data: ContentCreate, db: AsyncSession = Depends(get_db)):
-    new_item = ContentType(content_name=content_data.content_name, icon=content_data.icon)
-    db.add(new_item)
-    await db.commit()
-    await db.refresh(new_item)
-    return new_item
-
-
-class ContentUpdate(BaseModel):
-    content_name: Optional[str] = None
-    icon: Optional[str] = None
-
-@router.patch("/content/{id}")
-async def update_content(id: int, content_data: ContentUpdate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ContentType).where(ContentType.id == id))
-    item = result.scalars().first()
-    
-    if item is None:
+@router.patch("/content/{id}", response_model=ContentTypeSchema)
+async def update_content(id: int, content_data: ContentTypeUpdateSchema, db: AsyncSession = Depends(get_db)):
+    try:
+        return await content.update_content(db, id, content_data)
+    except NoResultFound:
         raise HTTPException(status_code=404, detail="Content not found")
-    
-    if content_data.content_name is not None:
-        item.content_name = content_data.content_name
-    if content_data.icon is not None:
-        item.icon = content_data.icon
-    
-    await db.commit()
-    await db.refresh(item)
-    return item
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

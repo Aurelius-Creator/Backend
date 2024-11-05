@@ -4,7 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
 
-class ContentType(Base):
+class ContentTypeModel(Base):
     __tablename__ = 'content_type'
     
     id = Column(Integer, primary_key=True, index=True)
