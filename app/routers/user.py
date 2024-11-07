@@ -23,7 +23,7 @@ async def create_user(user_data: UserCreateSchema, db: AsyncSession = Depends(ge
     try:
         result = await user.create_user(db, user_data)
         if result["success"]:
-            return {"message": result["message"]}
+            return {"msg": result["message"]}
         else:
             raise HTTPException(status_code=400, detail=result["error"])
     except Exception as e:
