@@ -8,17 +8,24 @@ from app.db.main import get_db
 router = APIRouter()
 
 @router.post("/login")
-async def login(user_login: UserLoginSchema, db: AsyncSession = Depends(get_db), response: Response = None):
+async def login(user_login: UserLoginSchema, db: AsyncSession = Depends(get_db)):
     user = await auth.authenticate_user(db, user_login)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     
     access_token, refresh_token = auth.create_tokens(user)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, max_age=auth.ACCESS_TOKEN_EXPIRE_MINUTES*60)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, max_age=auth.REFRESH_TOKEN_EXPIRE_DAYS*86400)
+    response = JSONResponse(content={
+        "message": "Login successful",
+        "content": ["bobo_1", "bobo_2"],
+        "access_token": access_token,
+        "refresh_token": refresh_token
+    })
     
-    return {"msg": "Login successful"}
+    response.set_cookie(key="2_access_token", value=access_token, httponly=True, secure=True, samesite="strict")
+    response.set_cookie(key="2_refresh_token", value=refresh_token, httponly=True, secure=True, samesite="strict")
+    
+    return response
 
 @router.post("/refresh")
 async def refresh_token(response: Response, db: AsyncSession = Depends(get_db)):
