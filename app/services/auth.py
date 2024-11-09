@@ -54,9 +54,9 @@ async def refresh_access_token(refresh_token: str, db):
             raise HTTPException(status_code=401, detail="Invalid refresh token")
         
         user = await get_user_by_id(db, user_id)
-        access_token, _ = create_tokens(user)
+        access_token, new_refresh_token = create_tokens(user)
         
-        return access_token
+        return access_token, new_refresh_token
     except JWTError:
         raise HTTPException(status_code=401, detail="Refresh token expired or invalid. Please log in again.")
     

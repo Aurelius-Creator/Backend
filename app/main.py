@@ -1,10 +1,13 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from app.db.main import get_db
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi import HTTPException, status
+
 from app.routers.content import router as content_routes
 from app.routers.user import router as user_routes
 from app.routers.auth import router as auth_router
-from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -13,13 +16,21 @@ async def lifespan(app: FastAPI):
     yield 
     print("server is shutting down...")
 
+class CSRFMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+            csrf_token = request.headers.get("X-CSRF-Token")
+            if csrf_token != request.cookies.get("csrf_token"):
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token invalid in main.py")
+            
+        response = await call_next(request)
+        return response
+
 app = FastAPI(lifespan=lifespan)
 
-origins = [
-    "http://localhost:5173",
-    "localhost:5173"
-]
+app.add_middleware(CSRFMiddleware)
 
+origins = ["http://localhost:5173", "localhost:5173"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
