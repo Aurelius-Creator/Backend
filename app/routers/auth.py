@@ -24,18 +24,31 @@ async def login(user_login: UserLoginSchema, db: AsyncSession = Depends(get_db))
     
     return response
 
+@router.get("/auth/validate")
+async def validate_auth(request: Request):   
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing"
+        )
+    try:
+        payload = auth.decode_token(refresh_token, is_refresh=True)
+        return JSONResponse(content={"msg": "Refresh token is valid", "payload": payload})
+    except HTTPException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail)
+
 @router.post("/refresh")
 async def refresh_token(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
-    refresh_token = response.cookies.get("refresh_token")
+    refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="Refresh token missing")
 
-    access_token, new_refresh_token = await auth.refresh_access_token(refresh_token, db)
+    access_token = await auth.refresh_access_token(refresh_token, db)
 
+    response = JSONResponse(content={"msg": "Access token refreshed"})
     response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="strict")
-    response.set_cookie(key="refresh_token", value=new_refresh_token, httponly=True, secure=True, samesite="strict")
 
-    return {"msg": "Access token refreshed"}
+    return response
 
 @router.post("/logout")
 async def logout(response: Response):
@@ -53,18 +66,6 @@ async def decode_access_token(request: Request):
     
     try:
         payload = auth.decode_token(access_token, is_refresh=False)
-        return JSONResponse(content=payload)
-    except HTTPException as e:
-        raise e
-    
-@router.post("/refresh-token/payload")
-async def decode_refresh_token(request: Request):
-    refresh_token = request.cookies.get("refresh_token")
-    if not refresh_token:
-        raise HTTPException(status_code=400, detail="Refresh token missing")
-    
-    try:
-        payload = auth.decode_token(refresh_token, is_refresh=True)
         return JSONResponse(content=payload)
     except HTTPException as e:
         raise e

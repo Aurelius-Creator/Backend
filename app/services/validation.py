@@ -1,4 +1,4 @@
-from fastapi import Depends, Request, HTTPException, status
+from fastapi import Request, HTTPException, status
 from app.services.auth import decode_token
 
 async def validate_access_and_csrf(request: Request):
@@ -22,5 +22,5 @@ async def validate_access_and_csrf(request: Request):
         return payload
     except HTTPException as e:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid or expired access token"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail=e.detail
         )
