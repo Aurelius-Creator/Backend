@@ -7,14 +7,14 @@ async def validate_access_and_csrf(request: Request):
     
     if not access_token:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access token missing"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Access token missing from validation"
         )
 
     # Validate CSRF token in header matches the one in the cookie
     csrf_token_header = request.headers.get("X-CSRF-Token")
     if csrf_token_header != csrf_token_cookie:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Invalid CSRF token from validation"
         )
 
     try:
