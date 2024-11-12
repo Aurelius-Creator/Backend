@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
+from app.db.main import Base
 
 class ContentTypeModel(Base):
     __tablename__ = 'content_type'
@@ -25,7 +23,10 @@ class ContentPermissionModel(Base):
     action = Column(String(10), nullable=False)
     
     content_type = relationship("ContentTypeModel", back_populates="permissions")
-    # user_permissions = relationship("UserPermission", back_populates="permission")
+    user_permissions = relationship(
+        "UserPermissionModel", 
+        primaryjoin="ContentPermissionModel.id == UserPermissionModel.permission_id",
+        back_populates="permission")
     
     def __repr__(self):
         return f"<ContentPermission(id={self.id}, name='{self.name}', content_type_id={self.content_type_id}, action={self.action})>"

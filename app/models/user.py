@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, func, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
+from app.db.main import Base
 
 class UserModel(Base):
     __tablename__ = "users"
@@ -16,8 +14,24 @@ class UserModel(Base):
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
     deleted_at = Column(DateTime, nullable=True)
     
-    # permissions = relationship("UserPermission", back_populates="user")
-    # refresh_tokens = relationship("RefreshToken", back_populates="user")
+    permissions = relationship("UserPermissionModel", back_populates="user")
 
     def __repr__(self):
         return f"<User(id={self.id}, username={self.username}, is_superuser={self.is_superuser})>"
+    
+class UserPermissionModel(Base):
+    __tablename__ = "users_permission"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    permission_id = Column(Integer, ForeignKey('content_permission.id'))
+
+    user = relationship("UserModel", back_populates="permissions")
+    permission = relationship(
+        "ContentPermissionModel", 
+        primaryjoin="UserPermissionModel.permission_id == ContentPermissionModel.id",
+        back_populates="user_permissions")
+    
+    def __repr__(self):
+        return f"<UserPermission(id={self.id}, user_id={self.user_id}, permission_id={self.permission_id})>"
+    

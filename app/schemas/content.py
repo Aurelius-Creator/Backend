@@ -51,6 +51,7 @@ class PermissionsSchema(BaseModel):
         from_atributes = True
 
 class FullContentSchemas(BaseModel):
+    id: int
     content_name: str
     icon: Optional[str] = None
     permissions: List[PermissionsSchema] = []

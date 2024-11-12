@@ -9,8 +9,8 @@ import bcrypt
 import pytz
 
 MY_TZ = pytz.timezone("Asia/Bangkok")
-SECRET_KEY = "lumifael"
-REFRESH_SECRET_KEY = "uriel"
+SECRET_KEY = "urielAccessKey"
+REFRESH_SECRET_KEY = "urielRefreshKey"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 10
 REFRESH_TOKEN_EXPIRE_MINUTES = 60
@@ -71,8 +71,8 @@ def decode_token(token: str, is_refresh: bool = False):
         
         if "user_id" not in payload:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN if is_refresh else status.HTTP_401_UNAUTHORIZED,
-                detail=  "Refresh token invalid. Please login again" if is_refresh else "Access token invalid. Please refresh your token."
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=  "Token is invalid. Please login again"
             )
         
         return payload

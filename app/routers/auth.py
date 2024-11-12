@@ -6,7 +6,9 @@ from app.services import auth
 from app.db.main import get_db
 from datetime import datetime
 import uuid
+import pytz
 
+MY_TZ = pytz.timezone("Asia/Bangkok")
 router = APIRouter()
 
 @router.post("/login")
@@ -14,6 +16,10 @@ async def login(user_login: UserLoginSchema, db: AsyncSession = Depends(get_db))
     user = await auth.authenticate_user(db, user_login)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid credentials")
+    
+    user.last_login = datetime.now(MY_TZ)
+    db.add(user)
+    await db.commit()
     
     access_token, refresh_token = auth.get_tokens(user)
     csrf_token = str(uuid.uuid4())

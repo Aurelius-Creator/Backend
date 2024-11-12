@@ -2,6 +2,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
+from app.models.user import UserPermissionModel
 from app.models.content import ContentTypeModel, ContentPermissionModel
 from app.schemas.content import ContentTypeSchema, ContentTypeCreateSchema, ContentTypeUpdateSchema
 from app.schemas.content import ContentPermissionSchema, ContentPermissionCreateSchema, FullContentSchemas
@@ -10,6 +11,32 @@ async def get_contents(db: AsyncSession) -> list[ContentTypeSchema]:
     result = await db.execute(select(ContentTypeModel))
     return result.scalars().all()
 
+async def get_contents_by_user_id(db: AsyncSession, user_id: int):
+    try:
+        result = await db.execute(
+            select(
+                ContentPermissionModel.content_type_id,
+                ContentTypeModel.content_name,
+                ContentTypeModel.icon,
+            )
+            .join(UserPermissionModel, ContentPermissionModel.id == UserPermissionModel.permission_id)
+            .join(ContentTypeModel, ContentTypeModel.id == ContentPermissionModel.content_type_id)
+            .where(UserPermissionModel.user_id == user_id)
+            .group_by(ContentPermissionModel.content_type_id)
+        )
+        permissions = [
+            {
+                "id": row.content_type_id,
+                "content_name": row.content_name,
+                "icon": row.icon
+            }
+            for row in result
+        ]
+
+        return permissions
+    except Exception as e:
+        raise e
+    
 async def get_content_by_id(db: AsyncSession, id: int) -> ContentTypeSchema:
     result = await db.execute(select(ContentTypeModel).where(ContentTypeModel.id == id))
     item = result.scalars().first()
@@ -101,6 +128,7 @@ async def get_contents_with_permissions(db: AsyncSession) -> list[FullContentSch
     
     content_permissions = [
         FullContentSchemas(
+            id=item.id,
             content_name=item.content_name,
             icon=item.icon,
             permissions=[
@@ -113,18 +141,29 @@ async def get_contents_with_permissions(db: AsyncSession) -> list[FullContentSch
     
     return content_permissions
 
-async def get_content_with_permissions_by_id(db: AsyncSession, id: int) -> FullContentSchemas:
-    result = await db.execute(
-        select(ContentTypeModel)
-        .options(selectinload(ContentTypeModel.permissions))
-        .where(ContentTypeModel.id == id)
-    )
-    item = result.scalars().first()
-    
+async def get_user_content_permission(db: AsyncSession, id: int, token_payload: dict) -> FullContentSchemas:
+    if not token_payload.get("super"):
+        result = await db.execute(
+            select(ContentTypeModel)
+            .join(ContentPermissionModel, ContentTypeModel.id == ContentPermissionModel.content_type_id)
+            .join(UserPermissionModel, UserPermissionModel.permission_id == ContentPermissionModel.id)
+            .options(selectinload(ContentTypeModel.permissions))
+            .where(UserPermissionModel.user_id == token_payload.get("user_id"))
+            .where(ContentTypeModel.id == id)
+        )
+    else:
+        result = await db.execute(
+            select(ContentTypeModel)
+            .options(selectinload(ContentTypeModel.permissions))
+            .where(ContentTypeModel.id == id)
+        ) 
+
+    item = result.scalars().first()    
     if not item:
         raise NoResultFound("Content not found")
     
     content_permission = FullContentSchemas(
+        id=item.id,
         content_name=item.content_name,
         icon=item.icon,
         permissions=[
@@ -132,5 +171,4 @@ async def get_content_with_permissions_by_id(db: AsyncSession, id: int) -> FullC
             for permission in item.permissions
         ]
     )
-    
     return content_permission
