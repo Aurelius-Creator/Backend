@@ -26,6 +26,7 @@ class UserSchema(BaseModel):
         from_attributes = True
 
 class UserQueryParams(PaginationParams):
+    id: Optional[int] = None
     username: Optional[str] = None
     superuser: Optional[str] = Field(None, pattern="^(y|n|a)$")
     last_login_start: Optional[date] = None

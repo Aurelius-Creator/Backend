@@ -43,6 +43,9 @@ async def fetch_users(query_params: UserQueryParams, db: AsyncSession) -> Pagina
         query = query.where(UserModel.is_superuser.is_(True))
     elif query_params.superuser == "n":
         query = query.where(UserModel.is_superuser.is_(False))
+        
+    if query_params.id:
+        query = query.where(UserModel.id.startswith(query_params.id))
 
     if query_params.username:
         query = query.where(UserModel.username.startswith(query_params.username))
