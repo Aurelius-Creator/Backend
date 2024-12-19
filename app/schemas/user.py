@@ -3,12 +3,19 @@ from typing import Optional, List
 from datetime import datetime, date
 from .pagination import PaginationParams, PaginatedResponse
 
+class CustomBaseModel(BaseModel):
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.strftime('%Y-%m-%d %H:%M:%S'),
+        }
+
 class CreateUserSchema(BaseModel):
     username: str
     password: str = Field(default="start@123", min_length=8)
     is_superuser: bool = False
+    permission_ids: Optional[List[int]] = None
 
-class UserSchema(BaseModel):
+class UserSchema(CustomBaseModel):
     id: int
     username: str
     is_superuser: bool
@@ -43,3 +50,12 @@ class PaginateUserResponse(PaginatedResponse[UserSchema]):
 class UserLoginSchema(BaseModel):
     username: str
     password: str
+    
+class UserPermissionSchema(BaseModel):
+    id: int
+    user_id: int
+    permission_id: int
+    
+class CreateUserPermissionSchema(BaseModel):
+    user_id: int
+    permission_ids: List[int]

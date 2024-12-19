@@ -44,6 +44,7 @@ class ContentPermissionCreateSchema(BaseModel):
     action: str
     
 class PermissionsSchema(BaseModel):
+    id: int
     name: str
     action: str
     

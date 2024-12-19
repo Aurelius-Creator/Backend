@@ -3,10 +3,11 @@ from sqlalchemy.exc import NoResultFound, IntegrityError
 from sqlalchemy.future import select
 from sqlalchemy import null
 from datetime import datetime, timedelta
-from app.models.user import UserModel
+from app.models.user import UserModel, UserPermissionModel
 from app.schemas.pagination import PaginationParams
-from app.schemas.user import UserSchema, CreateUserSchema, UserQueryParams, PaginateUserResponse
+from app.schemas.user import UserSchema, CreateUserSchema, UserQueryParams, PaginateUserResponse, UserPermissionSchema, CreateUserPermissionSchema
 from app.services.pagination import paginate_query
+from typing import Dict, Any
 import bcrypt
 
 async def get_all_users(pagination: PaginationParams, db: AsyncSession) -> PaginateUserResponse:
@@ -82,26 +83,50 @@ async def fetch_users(query_params: UserQueryParams, db: AsyncSession) -> Pagina
         data=user_schemas
     )
 
-async def create_user(db: AsyncSession, user_data: CreateUserSchema):
-    try:
-        hashed_pass = bcrypt.hashpw(user_data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        new_user = UserModel(
-            username=user_data.username, 
-            password=hashed_pass,
-            is_superuser=user_data.is_superuser
+async def create_user(db: AsyncSession, user_data: CreateUserSchema)-> Dict[str, Any]:
+    async def create_user_record() -> UserModel:
+        hashed_password = bcrypt.hashpw(
+            user_data.password.encode('utf-8'),
+            bcrypt.gensalt()
+        ).decode('utf-8')
+
+        user = UserModel(
+            username = user_data.username,
+            password = hashed_password,
+            is_superuser = user_data.is_superuser
         )
-        db.add(new_user)
+        db.add(user)
         await db.commit()
-        await db.refresh(new_user)
-        return {"success": True, "message": "User created successfully."}
-    
-    except IntegrityError as e:
-        db.rollback()
-        return {"success": False, "error": "Username already exists."}
-    
+        await db.refresh(user)
+        return user
+
+    try:
+        new_user = await create_user_record()
+        if user_data.permission_ids:
+            permission_result = await create_permissions_by_user_id(
+                db,
+                CreateUserPermissionSchema(
+                    user_id = new_user.id,
+                    permission_ids = user_data.permission_ids
+                )
+            )
+        
+            if not permission_result["success"]:
+                await db.rollback()
+                return {
+                    "success": False,
+                    "error": f"User created but permissions failed: {permission_result['error']}"
+                }
+        return {
+            "success": True,
+            "message": "User created successfully with permissions."
+        }
+    except IntegrityError:
+        await db.rollback()
+        return {"success": False, "error": "User already exists."}
     except Exception as e:
-        db.rollback()
-        return {"success": False, "error": str(e)}
+        await db.rollback()
+        return {"success": False, "error": f"Error creating user: {str(e)}"}
 
 # For Login only!
 async def get_user_by_username(db: AsyncSession, username: str) -> UserSchema:
@@ -113,4 +138,36 @@ async def get_user_by_username(db: AsyncSession, username: str) -> UserSchema:
     
     if item is None:
         raise NoResultFound
-    return item  
+    return item
+
+async def get_permissions_by_user_id(db: AsyncSession, user_id: int) -> UserPermissionSchema:
+    result = await db.execute(select(UserPermissionModel).where(
+        UserPermissionModel.user_id == user_id,
+        UserPermissionModel.active == True
+    ))
+    items = result.scalars().all()
+    
+    if items is None:
+        raise NoResultFound
+    return items
+
+async def create_permissions_by_user_id(db: AsyncSession, permissions: CreateUserPermissionSchema) -> dict:
+    try:
+        for permission in permissions.permission_ids:
+            new_permission = UserPermissionModel(
+                user_id=permissions.user_id,
+                permission_id=permission,
+                active=True
+            )
+            db.add(new_permission)
+        await db.commit()
+        return {"success": True, "message": "Permissions created successfully."}
+    
+    except IntegrityError as e:
+        db.rollback()
+        return {"success": False, "error": "Permission already exists."}
+    
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "error": str(e)}
+

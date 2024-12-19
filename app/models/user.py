@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, func, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, func, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.db.main import Base
 
@@ -25,6 +25,7 @@ class UserPermissionModel(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     permission_id = Column(Integer, ForeignKey('content_permission.id'))
+    active = Column(Integer)
 
     user = relationship("UserModel", back_populates="permissions")
     permission = relationship(
@@ -32,6 +33,9 @@ class UserPermissionModel(Base):
         primaryjoin="UserPermissionModel.permission_id == ContentPermissionModel.id",
         back_populates="user_permissions")
     
+    __table_args__ = (
+        UniqueConstraint("user_id", "permission_id", name="user_permission_unique"),
+    )
     def __repr__(self):
         return f"<UserPermission(id={self.id}, user_id={self.user_id}, permission_id={self.permission_id})>"
     

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound
 from app.db.main import get_db
 from app.schemas.content import ContentTypeSchema, ContentTypeCreateSchema, ContentTypeUpdateSchema
-from app.schemas.content import ContentTypeUpdateSchema, FullContentSchemas
+from app.schemas.content import ContentTypeUpdateSchema, FullContentSchemas, ContentPermissionSchema
 from app.services import content
 from app.services.validation import validate_access_and_csrf, check_superuser
 
@@ -70,3 +70,15 @@ async def get_contents_with_permissions(
         return await content.get_contents_with_permissions(db)
     except NoResultFound:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Content not found")
+    
+@router.get("/permissions", response_model=list[ContentPermissionSchema])
+async def get_all_permissions(
+    db: AsyncSession = Depends(get_db),
+    token_payload: dict = Depends(validate_access_and_csrf)
+):
+    try:
+        return await content.get_all_permissions(db)
+    except NoResultFound:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Permissions not found")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

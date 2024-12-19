@@ -132,7 +132,7 @@ async def get_contents_with_permissions(db: AsyncSession) -> list[FullContentSch
             content_name=item.content_name,
             icon=item.icon,
             permissions=[
-                {"name": permission.name, "action": permission.action}
+                {"id": permission.id, "name": permission.name, "action": permission.action}
                 for permission in item.permissions
             ]
         )
@@ -167,8 +167,12 @@ async def get_user_content_permission(db: AsyncSession, id: int, token_payload: 
         content_name=item.content_name,
         icon=item.icon,
         permissions=[
-            {"name": permission.name, "action": permission.action}
+            {"id": permission.id ,"name": permission.name, "action": permission.action}
             for permission in item.permissions
         ]
     )
     return content_permission
+
+async def get_all_permissions(db: AsyncSession) -> list[ContentPermissionSchema]:
+    result = await db.execute(select(ContentPermissionModel))
+    return result.scalars().all()
