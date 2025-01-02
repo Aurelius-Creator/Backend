@@ -59,3 +59,14 @@ class UserPermissionSchema(BaseModel):
 class CreateUserPermissionSchema(BaseModel):
     user_id: int
     permission_ids: List[int]
+    
+class UserBase(BaseModel):
+    id: int
+    username: str
+    
+    class Config:
+        from_attributes = True
+
+class UserCursorResponse(BaseModel):
+    users: List[UserBase]
+    next_cursor: Optional[int]

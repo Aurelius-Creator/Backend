@@ -1,11 +1,11 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import NoResultFound, IntegrityError
 from sqlalchemy.future import select
-from sqlalchemy import null
+from sqlalchemy import null, or_
 from datetime import datetime, timedelta
 from app.models.user import UserModel, UserPermissionModel
 from app.schemas.pagination import PaginationParams
-from app.schemas.user import UserSchema, CreateUserSchema, UserQueryParams, PaginateUserResponse, UserPermissionSchema, CreateUserPermissionSchema
+from app.schemas.user import UserSchema, CreateUserSchema, UserQueryParams, PaginateUserResponse, UserPermissionSchema, CreateUserPermissionSchema, UserCursorResponse
 from app.services.pagination import paginate_query
 from typing import Dict, Any
 import bcrypt
@@ -171,3 +171,30 @@ async def create_permissions_by_user_id(db: AsyncSession, permissions: CreateUse
         db.rollback()
         return {"success": False, "error": str(e)}
 
+async def get_users_with_cursor(db: AsyncSession, cursor: int, limit: int = 20) -> UserCursorResponse:
+    query = select(UserModel).where(UserModel.id > cursor).limit(limit)
+    users = await db.execute(query)
+    users = users.scalars().all()
+    next_cursor = users[-1].id if users else None
+    
+    return UserCursorResponse(
+        users=[UserSchema.model_validate(user) for user in users],
+        next_cursor=next_cursor
+    ) 
+    
+async def get_users_list_from_search(db: AsyncSession, data: str, limit: int = 20) -> UserCursorResponse:
+    query = (
+        select(UserModel)
+        .where(
+            or_(UserModel.username.ilike(f"{data}%"),
+                UserModel.id.ilike(f"{data}%")
+            )
+        ).limit(limit)
+    )
+    users = await db.execute(query)
+    users = users.scalars().all()
+    
+    return UserCursorResponse(
+        users=[UserSchema.model_validate(user) for user in users],
+        next_cursor=None
+    )
