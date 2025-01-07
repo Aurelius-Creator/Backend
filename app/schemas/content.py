@@ -1,61 +1,115 @@
-from pydantic import BaseModel, field_validator, Field
-from typing import Optional, List
+from typing import List, Optional
 
-class ContentTypeSchema(BaseModel):
-    id: int
-    content_name: str
-    icon: Optional[str] = None
-    
-    class Config:
-        from_attributes = True
-        
-class ContentTypeCreateSchema(BaseModel):
-    content_name: str = Field(..., min_length=1, max_length=50)
-    icon: Optional[str] = None
-    
-    @field_validator('content_name')
-    def name_must_not_be_empty(cls, v):
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class BaseContentType(BaseModel):
+    """Base class for content type schemas with common fields."""
+
+    content_name: str = Field(
+        min_length=1, max_length=50, description="Name of the content type"
+    )
+    icon: Optional[str] = Field(
+        default=None, description="Optional icon identifier for the content type"
+    )
+
+    @field_validator("content_name")
+    def validate_content_name(cls, v: str) -> str:
+        """Validate that content_name is not empty or just whitespace."""
         if not v.strip():
             raise ValueError("content_name must not be empty")
-        return v
-    
+        return v.strip()
+
+
+class ContentTypeSchema(BaseContentType):
+    """Schema for retrieving content types."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int = Field(description="Unique identifier for the content type")
+
+
+class ContentTypeCreateSchema(BaseContentType):
+    """Schema for creating new content types."""
+
+    pass
+
+
 class ContentTypeUpdateSchema(BaseModel):
-    content_name: Optional[str] = Field(None, min_length=1, max_length=50)
-    icon: Optional[str] = None
-    
-    @field_validator('content_name')
-    def name_must_not_be_empty(cls, v):
+    """Schema for updating existing content types."""
+
+    content_name: Optional[str] = Field(
+        default=None,
+        min_length=1,
+        max_length=50,
+        description="New name for the content type",
+    )
+    icon: Optional[str] = Field(
+        default=None, description="New icon identifier for the content type"
+    )
+
+    @field_validator("content_name")
+    def validate_content_name(cls, v: Optional[str]) -> Optional[str]:
+        """Validate that content_name is not empty or just whitespace if provided."""
         if v is not None and not v.strip():
             raise ValueError("content_name must not be empty if provided")
-        return v
-        
-class ContentPermissionSchema(BaseModel):
-    id: int
-    name: str
-    content_type_id: int
-    action: str
-    
-    class Config:
-        from_attributes = True
-        
-class ContentPermissionCreateSchema(BaseModel):
-    name: str
-    content_type_id: int
-    action: str
-    
-class PermissionsSchema(BaseModel):
-    id: int
-    name: str
-    action: str
-    
-    class Config:
-        from_atributes = True
+        return v.strip() if v is not None else v
 
-class FullContentSchemas(BaseModel):
-    id: int
-    content_name: str
-    icon: Optional[str] = None
-    permissions: List[PermissionsSchema] = []
-    
-    class Config:
-        from_attributes = True
+
+class BasePermission(BaseModel):
+    """Base class for permission schemas with common fields."""
+
+    name: str = Field(description="Name of the permission")
+    action: str = Field(
+        description="Action type (C: Create, R: Read, U: Update, D: Delete)"
+    )
+
+    @field_validator("action")
+    def validate_action(cls, v: str) -> str:
+        """Validate that action is one of the allowed CRUD values."""
+        allowed_actions = {"C", "R", "U", "D"}
+        if v not in allowed_actions:
+            raise ValueError(f"action must be one of: {', '.join(allowed_actions)}")
+        return v
+
+
+class ContentPermissionSchema(BasePermission):
+    """Schema for retrieving content permissions."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int = Field(description="Unique identifier for the permission")
+    content_type_id: int = Field(description="ID of the associated content type")
+
+
+class ContentPermissionCreateSchema(BasePermission):
+    """Schema for creating new content permissions."""
+
+    content_type_id: int = Field(description="ID of the content type to associate with")
+
+
+class PermissionSchema(BaseModel):
+    """Schema for basic permission information."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int = Field(description="Unique identifier for the permission")
+    name: str = Field(description="Name of the permission")
+    action: str = Field(
+        description="Action type (C: Create, R: Read, U: Update, D: Delete)"
+    )
+
+
+class FullContentSchema(BaseModel):
+    """Schema for content type with its associated permissions."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int = Field(description="Unique identifier for the content type")
+    content_name: str = Field(description="Name of the content type")
+    icon: Optional[str] = Field(
+        default=None, description="Optional icon identifier for the content type"
+    )
+    permissions: List[PermissionSchema] = Field(
+        default=[], description="List of permissions associated with this content type"
+    )

@@ -1,8 +1,10 @@
-from typing import List, Type, Tuple
+from typing import List, Tuple, Type
+
+from pydantic import BaseModel
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import func
-from pydantic import BaseModel
+
 
 async def paginate_query(
     db: AsyncSession,
@@ -11,10 +13,10 @@ async def paginate_query(
     page: int,
     page_size: int,
 ) -> Tuple[List[BaseModel], int, int]:
-    
+
     # Apply pagination
     paginated_query = query.limit(page_size).offset((page - 1) * page_size)
-    
+
     # Get the total count of items
     total_query = query.with_only_columns(func.count(model.id))
     total_result = await db.execute(total_query)
@@ -26,5 +28,5 @@ async def paginate_query(
 
     # Calculate total pages
     total_pages = (total + page_size - 1) // page_size
-    
+
     return items, total, total_pages
