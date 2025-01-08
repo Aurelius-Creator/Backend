@@ -7,7 +7,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.main import get_db
 from app.schemas import content as contentSchemas
 from app.services.content import ContentService
-from app.services.validation import check_superuser, validate_access_and_csrf
+from app.services.validation import (
+    check_superuser,
+    validate_access_and_csrf,
+    validate_permission,
+)
 
 router = APIRouter()
 
@@ -84,3 +88,10 @@ async def get_contents_with_permissions(db: AsyncSession = Depends(get_db)):
 @router.get("/permissions", response_model=List[contentSchemas.ContentPermissionSchema])
 async def get_all_permissions(db: AsyncSession = Depends(get_db)):
     return await handle_service_error(ContentService.get_all_permissions(db))
+
+
+@router.get("/ex")
+async def example_endpoint(
+    result: Dict = Depends(validate_permission),
+) -> contentSchemas.PermissionResponse:
+    return result

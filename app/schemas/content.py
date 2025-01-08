@@ -113,3 +113,13 @@ class FullContentSchema(BaseModel):
     permissions: List[PermissionSchema] = Field(
         default=[], description="List of permissions associated with this content type"
     )
+
+
+class PermissionResponse(BaseModel):
+    """Standardized permission response model"""
+
+    authorized: bool
+    permission_id: Optional[int] = None
+    user_id: Optional[int] = None
+    content_type_id: Optional[int] = None
+    action: Optional[str] = None

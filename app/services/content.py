@@ -1,5 +1,6 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
+from sqlalchemy import and_
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -14,6 +15,7 @@ from app.schemas.content import (
     ContentTypeSchema,
     ContentTypeUpdateSchema,
     FullContentSchema,
+    PermissionResponse,
 )
 
 
@@ -258,3 +260,41 @@ class ContentService:
         """Get all content permissions."""
         result = await db.execute(select(ContentPermissionModel))
         return result.scalars().all()
+
+    @staticmethod
+    async def check_user_permission(
+        user_id: int, content_type: int, action: str, db: AsyncSession
+    ) -> PermissionResponse:
+        """Check user-content permission."""
+        query_content = select(ContentPermissionModel.id).where(
+            and_(
+                ContentPermissionModel.content_type_id == content_type,
+                ContentPermissionModel.action == action,
+            )
+        )
+        result = await db.execute(query_content)
+        permission_id = result.scalars().first()
+
+        if not permission_id:
+            raise NoResultFound("Permission not found")
+
+        query = select(UserPermissionModel).where(
+            and_(
+                UserPermissionModel.user_id == user_id,
+                UserPermissionModel.permission_id == permission_id,
+                UserPermissionModel.active == 1,
+            )
+        )
+        result = await db.execute(query)
+        item = result.scalars().first()
+
+        if not item:
+            raise NoResultFound("This request required permission.")
+
+        return PermissionResponse(
+            authorized=True,
+            permission_id=permission_id,
+            user_id=user_id,
+            content_type_id=content_type,
+            action=action,
+        )

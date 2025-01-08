@@ -313,10 +313,19 @@ class UserService:
 
     @classmethod
     async def update_user_password(
-        cls, db: AsyncSession, data: UpdateUserPasswordSchema
+        cls, db: AsyncSession, token_payload: dict, data: UpdateUserPasswordSchema
     ) -> Dict[str, Any]:
         """Update user password."""
         try:
+            if (
+                data.user_id != token_payload.get("user_id")
+                and token_payload.get("super") == False
+            ):
+                return {
+                    "success": False,
+                    "error": "Can not change other users password.",
+                }
+
             if data.password != data.confirm_password:
                 return {"success": False, "error": "Passwords do not match."}
 
