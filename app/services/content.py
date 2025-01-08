@@ -216,22 +216,19 @@ class ContentService:
         db: AsyncSession, id: int, token_payload: dict
     ) -> FullContentSchema:
         """Get content permissions for a specific user."""
-        query = select(ContentTypeModel).options(
-            selectinload(ContentTypeModel.permissions)
-        )
-
-        if not token_payload.get("super"):
-            query = (
-                query.join(
-                    ContentPermissionModel,
-                    ContentTypeModel.id == ContentPermissionModel.content_type_id,
+        if token_payload.get("super"):
+            query = select(ContentTypeModel).options(
+                selectinload(ContentTypeModel.permissions)
+            )
+        else:
+            query = select(ContentTypeModel).options(
+                selectinload(
+                    ContentTypeModel.permissions.and_(
+                        ContentPermissionModel.id == UserPermissionModel.permission_id,
+                        UserPermissionModel.user_id == token_payload.get("user_id"),
+                        UserPermissionModel.active == True,
+                    )
                 )
-                .join(
-                    UserPermissionModel,
-                    UserPermissionModel.permission_id == ContentPermissionModel.id,
-                )
-                .where(UserPermissionModel.active == True)
-                .where(UserPermissionModel.user_id == token_payload.get("user_id"))
             )
 
         query = query.where(ContentTypeModel.id == id)
