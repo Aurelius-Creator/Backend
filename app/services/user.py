@@ -279,10 +279,13 @@ class UserService:
         db: AsyncSession, cursor: int, limit: int = 20
     ) -> UserCursorResponse:
         """Get users using cursor-based pagination."""
-        query = select(UserModel).where(UserModel.id > cursor).limit(limit)
+        query = select(UserModel).where(UserModel.id > cursor).limit(limit + 1)
         result = await db.execute(query)
         users = result.scalars().all()
-        next_cursor = users[-1].id if users else None
+
+        has_more = len(users) > limit
+        users = users[:limit]
+        next_cursor = users[-1].id if has_more else None
 
         return UserCursorResponse(
             users=[UserSchema.model_validate(user) for user in users],
