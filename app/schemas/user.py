@@ -40,6 +40,7 @@ class UserSchema(CustomBaseModel, UserBase):
     is_superuser: bool
     last_login: Optional[datetime] = None
     created_at: datetime
+    deleted_at: Optional[datetime] = None
     active: bool = True
 
     @model_validator(mode="before")

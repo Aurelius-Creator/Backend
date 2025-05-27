@@ -18,7 +18,7 @@ HTTP_METHOD_TO_CRUD_ACTION: Dict[str, str] = {
 }
 
 
-async def validate_access_and_csrf(request: Request):
+async def validate_access_and_csrf(request: Request) -> dict:
     access_token = request.cookies.get("access_token")
     if not access_token:
         raise HTTPException(
@@ -77,9 +77,14 @@ async def validate_permission(
         )
 
     try:
+        content_type_id = int(content_type)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Invalid content type ID")
+
+    try:
         return await ContentService.check_user_permission(
             user_id=token_payload.get("user_id"),
-            content_type=content_type,
+            content_type=content_type_id,
             action=action,
             db=db,
         )

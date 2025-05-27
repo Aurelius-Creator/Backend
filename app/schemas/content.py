@@ -111,7 +111,8 @@ class FullContentSchema(BaseModel):
         default=None, description="Optional icon identifier for the content type"
     )
     permissions: List[PermissionSchema] = Field(
-        default=[], description="List of permissions associated with this content type"
+        default_factory=list,
+        description="List of permissions associated with this content type",
     )
 
 
